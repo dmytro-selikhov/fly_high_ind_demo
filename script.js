@@ -1,158 +1,102 @@
 (function () {
+  const OFFER = "https://play.mascot.games/fly-high/";
+  const PROMO = "BONUS200";
 
-  // ==========================================================
-  // CONFIG
-  // ==========================================================
-
-  const CONFIG = {
-    offer: "https://play.mascot.games/fly-high/",
-    promo: "BONUS200",
-
-    timer: 14 * 60 + 57,
-
-    counters: {
-      online: 1847,
-      claimed: 3241
-    }
-  };
-
-  // ==========================================================
-  // CTA LINKS
-  // ==========================================================
-
-  document.querySelectorAll("[data-cta]").forEach(link => {
-    link.href = CONFIG.offer;
-    link.rel = "noreferrer";
+  document.querySelectorAll("[data-cta]").forEach(a => {
+    a.href = OFFER;
+    a.rel = "noreferrer";
   });
-
-  // ==========================================================
-  // ONLINE COUNTERS
-  // ==========================================================
 
   const online = document.querySelector("[data-online]");
   const claimed = document.querySelector("[data-claimed]");
-
-  let onlineValue =
-    CONFIG.counters.online + Math.floor(Math.random() * 80);
-
-  let claimedValue =
-    CONFIG.counters.claimed + Math.floor(Math.random() * 120);
-
-  function formatNumber(value) {
-    return value.toLocaleString("de-DE");
-  }
-
+  let onlineVal = 1847 + Math.floor(Math.random() * 80);
+  let claimedVal = 3241 + Math.floor(Math.random() * 120);
+  function fmt(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, "."); }
   function updateCounters() {
-
-    onlineValue += Math.floor(Math.random() * 5) - 1;
-
-    if (onlineValue < 1780) onlineValue = 1810;
-    if (onlineValue > 1960) onlineValue = 1905;
-
-    if (Math.random() > 0.68) {
-      claimedValue++;
-    }
-
-    if (online) {
-      online.textContent = formatNumber(onlineValue);
-    }
-
-    if (claimed) {
-      claimed.textContent = formatNumber(claimedValue);
-    }
-
+    onlineVal += Math.floor(Math.random() * 5) - 1;
+    if (onlineVal < 1780) onlineVal = 1810;
+    if (onlineVal > 1960) onlineVal = 1905;
+    claimedVal += Math.random() > .68 ? 1 : 0;
+    if (online) online.textContent = fmt(onlineVal);
+    if (claimed) claimed.textContent = fmt(claimedVal);
   }
-
   updateCounters();
   setInterval(updateCounters, 2400);
 
-  // ==========================================================
-  // COUNTDOWN TIMER
-  // ==========================================================
-
-  let totalSeconds = CONFIG.timer;
-
-  const hours = document.querySelector("[data-h]");
-  const minutes = document.querySelector("[data-m]");
-  const seconds = document.querySelector("[data-s]");
-
-  function updateTimer() {
-
-    if (totalSeconds <= 0) {
-      totalSeconds = CONFIG.timer;
-    }
-
-    totalSeconds--;
-
-    const hh = Math.floor(totalSeconds / 3600);
-    const mm = Math.floor((totalSeconds % 3600) / 60);
-    const ss = totalSeconds % 60;
-
-    if (hours) {
-      hours.textContent = String(hh).padStart(2, "0");
-    }
-
-    if (minutes) {
-      minutes.textContent = String(mm).padStart(2, "0");
-    }
-
-    if (seconds) {
-      seconds.textContent = String(ss).padStart(2, "0");
-    }
-
+  let total = 14 * 60 + 57;
+  const h = document.querySelector("[data-h]");
+  const m = document.querySelector("[data-m]");
+  const s = document.querySelector("[data-s]");
+  function tick() {
+    if (total <= 0) total = 14 * 60 + 57;
+    total--;
+    const hh = Math.floor(total / 3600);
+    const mm = Math.floor((total % 3600) / 60);
+    const ss = total % 60;
+    if (h) h.textContent = String(hh).padStart(2, "0");
+    if (m) m.textContent = String(mm).padStart(2, "0");
+    if (s) s.textContent = String(ss).padStart(2, "0");
   }
-
-  updateTimer();
-  setInterval(updateTimer, 1000);
-
-  // ==========================================================
-  // COPY PROMO
-  // ==========================================================
+  tick();
+  setInterval(tick, 1000);
 
   async function copyPromo() {
-
     try {
-
-      await navigator.clipboard.writeText(CONFIG.promo);
-
-    } catch {
-
-      const textarea = document.createElement("textarea");
-
-      textarea.value = CONFIG.promo;
-
-      document.body.appendChild(textarea);
-
-      textarea.select();
-
+      await navigator.clipboard.writeText(PROMO);
+    } catch (e) {
+      const ta = document.createElement("textarea");
+      ta.value = PROMO;
+      document.body.appendChild(ta);
+      ta.select();
       document.execCommand("copy");
-
-      textarea.remove();
-
+      ta.remove();
     }
-
-    document
-      .querySelector("[data-copied]")
-      ?.classList.add("show");
-
-    document.querySelectorAll(
-      "[data-copy], [data-modal-copy]"
-    ).forEach(button => {
-      button.textContent = "Copied ✓";
-    });
-
+    document.querySelector("[data-copied]")?.classList.add("show");
+    document.querySelector("[data-copy]").textContent = "Copied ✓";
+    document.querySelector("[data-modal-copy]").textContent = "Copied ✓";
   }
 
-  document
-    .querySelector("[data-copy]")
-    ?.addEventListener("click", copyPromo);
+  document.querySelector("[data-copy]")?.addEventListener("click", copyPromo);
+  document.querySelector("[data-code]")?.addEventListener("click", copyPromo);
+  document.querySelector("[data-modal-copy]")?.addEventListener("click", copyPromo);
 
-  document
-    .querySelector("[data-code]")
-    ?.addEventListener("click", copyPromo);
+  const cells = Array.from(document.querySelectorAll("[data-cell]"));
+  const hint = document.querySelector("[data-hint]");
+  const winLayer = document.querySelector("[data-win-layer]");
+  const modal = document.querySelector("[data-modal]");
+  let moves = 0;
+  let locked = false;
 
-  document
-    .querySelector("[data-modal-copy]")
-    ?.addEventListener("click", copyPromo);
+  const botOrder = [4, 0, 8, 2, 6, 1, 3, 5, 7];
 
+  function botMove() {
+    const empty = botOrder.map(i => cells[i]).find(c => c && !c.textContent);
+    if (!empty) return;
+    empty.textContent = "O";
+    empty.classList.add("o");
+  }
+
+  function unlockBonus() {
+    locked = true;
+    if (hint) hint.textContent = "Promo code BONUS200 terbuka. Copy lalu klaim bonus.";
+    winLayer?.classList.remove("hidden");
+    setTimeout(() => modal?.classList.remove("hidden"), 850);
+  }
+
+  cells.forEach(cell => {
+    cell.addEventListener("click", () => {
+      if (locked || cell.textContent) return;
+      cell.textContent = "X";
+      cell.classList.add("x");
+      moves++;
+      if (hint) hint.textContent = moves < 3 ? `Bagus! Tap ${3 - moves} kotak lagi untuk membuka bonus.` : "Bonus terbuka!";
+      if (moves >= 3) {
+        unlockBonus();
+        return;
+      }
+      setTimeout(botMove, 220);
+    });
+  });
+
+  document.querySelector("[data-close]")?.addEventListener("click", () => modal?.classList.add("hidden"));
 })();
